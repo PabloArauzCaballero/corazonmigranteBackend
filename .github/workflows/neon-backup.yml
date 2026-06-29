@@ -1,0 +1,59 @@
+name: Neon remote backup
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 05:20 UTC = madrugada para Bolivia. Ajusta si necesitas otra ventana.
+    - cron: '20 5 * * *'
+
+jobs:
+  backup-to-neon:
+    name: Backup PostgreSQL to Neon
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      NODE_ENV: production
+      SOURCE_DATABASE_URL: ${{ secrets.SOURCE_DATABASE_URL }}
+      NEON_BACKUP_DATABASE_URL: ${{ secrets.NEON_BACKUP_DATABASE_URL }}
+      BACKUP_CONFIRM_REMOTE_NEON: 'true'
+      BACKUP_RESTORE_TO_NEON: 'true'
+      BACKUP_LOCAL_RETENTION_DAYS: '1'
+      BACKUP_DIR: backups
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          pg_dump --version
+          pg_restore --version
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Validate backup secrets
+        run: |
+          test -n "$SOURCE_DATABASE_URL"
+          test -n "$NEON_BACKUP_DATABASE_URL"
+
+      - name: Run backup and restore into Neon backup database
+        run: npm run db:backup:neon
+
+      - name: Upload backup manifest only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-backup-manifest
+          path: backups/*.manifest.json
+          if-no-files-found: ignore
+          retention-days: 7

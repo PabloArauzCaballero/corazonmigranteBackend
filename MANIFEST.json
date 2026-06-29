@@ -1,0 +1,33 @@
+{
+  "project": "Corazon Migrante Backend Reengineered",
+  "stack": [
+    "NestJS",
+    "TypeScript",
+    "PostgreSQL",
+    "Sequelize",
+    "Redis",
+    "JWT",
+    "Swagger",
+    "Jest"
+  ],
+  "apiPrefix": "/api/v1",
+  "generatedAt": "2026-06-28",
+  "included": {
+    "sourceCode": true,
+    "migrations": true,
+    "seeders": true,
+    "dockerCompose": true,
+    "swaggerSetup": true,
+    "rbacGuards": true,
+    "moduleReadmes": true,
+    "docsPromptPack": true,
+    "tests": true
+  },
+  "securityNote": "No contiene llaves privadas ni secretos reales. Las variables sensibles deben configurarse en .env o Secret Manager.",
+  "includes_neon_backup_job": true,
+  "backup_files": [
+    "scripts/backup-to-neon.js",
+    ".github/workflows/neon-backup.yml",
+    "docs/BACKUP_NEON.md"
+  ]
+}
