@@ -34,6 +34,21 @@ export { AuditLog } from './audit-log.model';
 export { PublicVisit } from './public-visit.model';
 export { UiEvent } from './ui-event.model';
 
+export { ContentAuthor } from './content-author.model';
+export { ContentCategory } from './content-category.model';
+export { ContentTag } from './content-tag.model';
+export { ContentPublication } from './content-publication.model';
+export { ContentPublicationTag } from './content-publication-tag.model';
+export { AdsCompany } from './ads-company.model';
+export { AdsPlacement } from './ads-placement.model';
+export { AdsCampaign } from './ads-campaign.model';
+export { AdsCampaignCreative } from './ads-campaign-creative.model';
+export { AdsCampaignPlacement } from './ads-campaign-placement.model';
+export { AdsCampaignContentTarget } from './ads-campaign-content-target.model';
+export { AdsImpression } from './ads-impression.model';
+export { HomepageSection } from './homepage-section.model';
+export { HomepageFeaturedItem } from './homepage-featured-item.model';
+
 import { User } from './user.model';
 import { Role } from './role.model';
 import { Permission } from './permission.model';
@@ -69,6 +84,21 @@ import { MessageSendLog } from './message-send-log.model';
 import { AuditLog } from './audit-log.model';
 import { PublicVisit } from './public-visit.model';
 import { UiEvent } from './ui-event.model';
+
+import { ContentAuthor } from './content-author.model';
+import { ContentCategory } from './content-category.model';
+import { ContentTag } from './content-tag.model';
+import { ContentPublication } from './content-publication.model';
+import { ContentPublicationTag } from './content-publication-tag.model';
+import { AdsCompany } from './ads-company.model';
+import { AdsPlacement } from './ads-placement.model';
+import { AdsCampaign } from './ads-campaign.model';
+import { AdsCampaignCreative } from './ads-campaign-creative.model';
+import { AdsCampaignPlacement } from './ads-campaign-placement.model';
+import { AdsCampaignContentTarget } from './ads-campaign-content-target.model';
+import { AdsImpression } from './ads-impression.model';
+import { HomepageSection } from './homepage-section.model';
+import { HomepageFeaturedItem } from './homepage-featured-item.model';
 
 export const databaseModels = [
   User,
@@ -106,4 +136,18 @@ export const databaseModels = [
   AuditLog,
   PublicVisit,
   UiEvent,
+  ContentAuthor,
+  ContentCategory,
+  ContentTag,
+  ContentPublication,
+  ContentPublicationTag,
+  AdsCompany,
+  AdsPlacement,
+  AdsCampaign,
+  AdsCampaignCreative,
+  AdsCampaignPlacement,
+  AdsCampaignContentTarget,
+  AdsImpression,
+  HomepageSection,
+  HomepageFeaturedItem,
 ];

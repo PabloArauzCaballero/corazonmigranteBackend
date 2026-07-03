@@ -22,6 +22,9 @@ import { AuditModule } from './modules/audit/audit.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { HealthModule } from './modules/health/health.module';
 import { LegacyCompatibilityModule } from './modules/legacy-compatibility/legacy-compatibility.module';
+import { ContentModule } from './modules/content/content.module';
+import { AdvertisingModule } from './modules/advertising/advertising.module';
+import { HomepageModule } from './modules/homepage/homepage.module';
 import { RedisModule } from './infrastructure/redis/redis.module';
 
 @Module({
@@ -46,6 +49,9 @@ import { RedisModule } from './infrastructure/redis/redis.module';
     CmsModule,
     AccountingModule,
     AnalyticsModule,
+    ContentModule,
+    AdvertisingModule,
+    HomepageModule,
     HealthModule,
     LegacyCompatibilityModule,
   ],

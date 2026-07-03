@@ -1,0 +1,16 @@
+.git
+.github
+node_modules
+dist
+coverage
+.env
+.env.*
+secrets
+storage/uploads/*
+storage/tmp/*
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+.pnp.cjs
+.pnp.loader.mjs
+.yarn/install-state.gz

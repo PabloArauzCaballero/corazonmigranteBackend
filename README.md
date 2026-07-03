@@ -39,13 +39,13 @@ http://localhost:3000/api/v1/health
 
 ## Credenciales demo del seeder
 
-| Rol | Email | Password |
-|---|---|---|
-| Super admin | `superadmin@corazonmigrante.test` | `Demo123456!` |
-| Admin | `admin@corazonmigrante.test` | `Demo123456!` |
-| Contador | `contador@corazonmigrante.test` | `Demo123456!` |
-| Terapeuta | `terapeuta.demo@corazonmigrante.test` | `Demo123456!` |
-| Paciente | `paciente.demo@corazonmigrante.test` | `Demo123456!` |
+| Rol         | Email                                 | Password      |
+| ----------- | ------------------------------------- | ------------- |
+| Super admin | `superadmin@corazonmigrante.test`     | `Demo123456!` |
+| Admin       | `admin@corazonmigrante.test`          | `Demo123456!` |
+| Contador    | `contador@corazonmigrante.test`       | `Demo123456!` |
+| Terapeuta   | `terapeuta.demo@corazonmigrante.test` | `Demo123456!` |
+| Paciente    | `paciente.demo@corazonmigrante.test`  | `Demo123456!` |
 
 ## Flujo mínimo para probar
 
@@ -123,7 +123,6 @@ STORAGE_PROVIDER=GCS
 
 Revisa `docs/INTEGRACIONES_SENDGRID_GCS.md` y `.env.production.example` para la configuración completa.
 
-
 ## Smoke test
 
 ```bash
@@ -185,7 +184,6 @@ Documentación completa:
 docs/BACKUP_NEON.md
 ```
 
-
 ## Protección contra transacciones fragmentadas
 
 Las operaciones críticas que escriben en varias tablas usan transacciones SQL con rollback automático. Para archivos en GCS/storage local, el backend aplica limpieza compensatoria si falla la escritura de metadata. Ver `docs/TRANSACTION_ROLLBACK_POLICY.md`.
@@ -200,3 +198,25 @@ yarn smoke:deep:win -- -AllowMutations
 ```
 
 Documentación completa: `docs/SMOKE_PROFUNDO_WINDOWS.md`.
+
+## Integración interna Newspaper
+
+Este backend ahora incluye los módulos internos `content`, `advertising` y `homepage`, derivados de la lógica útil de Newspaper, pero reimplementados dentro de la arquitectura de Corazón Migrante.
+
+Documentos principales:
+
+- `docs/MIGRATION_NEWSPAPER_TO_CORAZON.md`
+- `docs/API_CONTENT_ADVERTISING_HOMEPAGE.md`
+- `docs/TESTING_CONTENT_ADVERTISING_HOMEPAGE.md`
+
+Validación rápida:
+
+```bash
+yarn typecheck
+yarn lint
+yarn build
+yarn test
+yarn db:migrate
+yarn db:seed
+yarn smoke:newspaper-internal
+```

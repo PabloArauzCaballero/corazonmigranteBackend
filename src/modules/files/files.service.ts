@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
   StreamableFile,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -10,7 +11,7 @@ import { InjectModel } from '@nestjs/sequelize';
 import { Storage } from '@google-cloud/storage';
 import { createHash, randomUUID } from 'crypto';
 import { createReadStream, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync } from 'fs';
-import { extname, join } from 'path';
+import { dirname, extname, join } from 'path';
 import { Response } from 'express';
 import { FileAccessLog, FileAsset } from '@/database/models';
 import { AuthenticatedUser } from '@/common/types/authenticated-user';
@@ -33,8 +34,12 @@ export class FilesService {
   ) {
     if (this.storageProvider === STORAGE_PROVIDER_GCS) {
       const projectId = this.config.get<string>('files.gcs.projectId') || undefined;
-      const credentials = this.config.get<Record<string, unknown>>('files.gcs.credentials') || undefined;
-      this.gcs = new Storage({ ...(projectId ? { projectId } : {}), ...(credentials ? { credentials } : {}) });
+      const credentials =
+        this.config.get<Record<string, unknown>>('files.gcs.credentials') || undefined;
+      this.gcs = new Storage({
+        ...(projectId ? { projectId } : {}),
+        ...(credentials ? { credentials } : {}),
+      });
     }
   }
 
@@ -46,6 +51,20 @@ export class FilesService {
 
   private get gcsBucketName() {
     return this.config.get<string>('files.gcs.bucket');
+  }
+
+  private resolveGcsBucket(module: string) {
+    const normalizedModule = (module ?? '').toUpperCase();
+    if (normalizedModule === 'CMS' || normalizedModule === 'THERAPY_CATALOG') {
+      return (
+        this.config.get<string>('files.gcs.publicAssetsBucket') ||
+        this.config.get<string>('files.gcs.bucket')
+      );
+    }
+    return (
+      this.config.get<string>('files.gcs.userMediaBucket') ||
+      this.config.get<string>('files.gcs.bucket')
+    );
   }
 
   async upload(user: AuthenticatedUser, dto: UploadFileDto, file?: Express.Multer.File) {
@@ -68,14 +87,15 @@ export class FilesService {
     const checksum = createHash('sha256').update(readFileSync(file.path)).digest('hex');
 
     const storageProvider = this.storageProvider;
-    const bucket = storageProvider === STORAGE_PROVIDER_GCS ? this.gcsBucketName : undefined;
+    const bucket =
+      storageProvider === STORAGE_PROVIDER_GCS ? this.resolveGcsBucket(dto.module) : undefined;
 
     let externalObjectCreated = false;
     try {
       if (storageProvider === STORAGE_PROVIDER_GCS) {
-        await this.uploadToGcs(file, objectKey);
+        await this.uploadToGcs(file, objectKey, bucket);
       } else {
-        this.moveToLocalStorage(file, objectKey, dto.module, user.sub);
+        this.moveToLocalStorage(file, objectKey);
       }
       externalObjectCreated = true;
 
@@ -188,25 +208,20 @@ export class FilesService {
     return file;
   }
 
-
   private buildObjectKey(module: string, userId: string, safeExt: string) {
     const moduleKey = module.toLowerCase();
     const userMediaPrefix = this.config.get<string>('files.gcs.userMediaPrefix') ?? 'users';
     const publicAssetsPrefix = this.config.get<string>('files.gcs.publicAssetsPrefix') ?? 'public';
-    const prefix = module === 'CMS' || module === 'THERAPY_CATALOG' ? publicAssetsPrefix : userMediaPrefix;
+    const prefix =
+      module === 'CMS' || module === 'THERAPY_CATALOG' ? publicAssetsPrefix : userMediaPrefix;
     return `${prefix}/${moduleKey}/${userId}/${randomUUID()}${safeExt}`;
   }
 
-  private moveToLocalStorage(
-    file: Express.Multer.File,
-    objectKey: string,
-    module: string,
-    userId: string,
-  ) {
+  private moveToLocalStorage(file: Express.Multer.File, objectKey: string) {
     const uploadDir = this.config.get<string>('files.uploadDir') ?? 'storage/uploads';
     mkdirSync(uploadDir, { recursive: true });
     const finalPath = join(uploadDir, objectKey);
-    mkdirSync(join(uploadDir, module.toLowerCase(), userId), { recursive: true });
+    mkdirSync(dirname(finalPath), { recursive: true });
     renameSync(file.path, finalPath);
   }
 
@@ -232,30 +247,51 @@ export class FilesService {
     }
   }
 
-  private async uploadToGcs(file: Express.Multer.File, objectKey: string) {
+  private async uploadToGcs(
+    file: Express.Multer.File,
+    objectKey: string,
+    bucketName: string | undefined,
+  ) {
     if (!this.gcs)
       throw new BadRequestException({
         code: 'GCS_NOT_CONFIGURED',
         message: 'Google Cloud Storage no está inicializado.',
       });
-    const bucketName = this.gcsBucketName;
     if (!bucketName)
       throw new BadRequestException({
         code: 'GCS_BUCKET_REQUIRED',
-        message: 'Debe configurar GCS_BUCKET.',
+        message:
+          'Debe configurar GCS_BUCKET o GCS_BUCKET_NAME_USER_MEDIA para subir archivos a GCS.',
       });
 
-    await this.gcs.bucket(bucketName).upload(file.path, {
-      destination: objectKey,
-      resumable: false,
-      metadata: {
-        contentType: file.mimetype,
+    try {
+      await this.gcs.bucket(bucketName).upload(file.path, {
+        destination: objectKey,
+        resumable: false,
         metadata: {
-          originalName: file.originalname,
+          contentType: file.mimetype,
+          metadata: {
+            originalName: file.originalname,
+          },
         },
-      },
-    });
-    unlinkSync(file.path);
+      });
+      unlinkSync(file.path);
+    } catch (error) {
+      throw new ServiceUnavailableException({
+        code: 'GCS_UPLOAD_FAILED',
+        message: 'No se pudo subir el archivo a Google Cloud Storage.',
+        details: [
+          {
+            provider: STORAGE_PROVIDER_GCS,
+            action: 'upload',
+            bucket: bucketName,
+            objectKey,
+            ...this.extractProviderError(error),
+            hint: 'Verifica GOOGLE_CREDENTIALS_BASE64/JSON, que el bucket exista y que la service account tenga storage.objects.create, storage.objects.get y storage.objects.delete.',
+          },
+        ],
+      });
+    }
   }
 
   private async getGcsSignedUrl(file: FileAsset) {
@@ -271,23 +307,51 @@ export class FilesService {
       });
 
     const expiresInSeconds = this.config.get<number>('files.signedUrlExpiresSeconds') ?? 900;
-    const [url] = await this.gcs
-      .bucket(file.bucket)
-      .file(file.objectKey)
-      .getSignedUrl({
-        version: 'v4',
-        action: 'read',
-        expires: Date.now() + expiresInSeconds * 1000,
-        responseDisposition: `attachment; filename="${encodeURIComponent(file.originalName)}"`,
-      });
+    try {
+      const [url] = await this.gcs
+        .bucket(file.bucket)
+        .file(file.objectKey)
+        .getSignedUrl({
+          version: 'v4',
+          action: 'read',
+          expires: Date.now() + expiresInSeconds * 1000,
+          responseDisposition: `attachment; filename="${encodeURIComponent(file.originalName)}"`,
+        });
 
+      return {
+        fileId: file.id,
+        provider: STORAGE_PROVIDER_GCS,
+        bucket: file.bucket,
+        objectKey: file.objectKey,
+        url,
+        expiresInSeconds,
+      };
+    } catch (error) {
+      throw new ServiceUnavailableException({
+        code: 'GCS_SIGNED_URL_FAILED',
+        message: 'No se pudo generar la URL firmada de Google Cloud Storage.',
+        details: [
+          {
+            provider: STORAGE_PROVIDER_GCS,
+            action: 'signed-url',
+            bucket: file.bucket,
+            objectKey: file.objectKey,
+            ...this.extractProviderError(error),
+            hint: 'Verifica que la service account pueda firmar URLs y leer el objeto en el bucket.',
+          },
+        ],
+      });
+    }
+  }
+
+  private extractProviderError(error: unknown) {
+    const candidate = error as Record<string, any>;
+    const response = candidate?.response as Record<string, any> | undefined;
+    const body = response?.data ?? candidate?.body ?? candidate?.errors;
     return {
-      fileId: file.id,
-      provider: STORAGE_PROVIDER_GCS,
-      bucket: file.bucket,
-      objectKey: file.objectKey,
-      url,
-      expiresInSeconds,
+      providerCode: candidate?.code ?? response?.status,
+      providerMessage: candidate?.message ?? response?.statusText ?? 'Error desconocido de GCS.',
+      providerErrors: candidate?.errors ?? body,
     };
   }
 }

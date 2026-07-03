@@ -96,7 +96,10 @@ export class MessagingService {
       ...toLimitOffset(query),
       order: [['createdAt', 'DESC']],
     });
-    return { items: rows.map((row) => this.toApiOutbox(row)), pagination: buildPagination(query, count) };
+    return {
+      items: rows.map((row) => this.toApiOutbox(row)),
+      pagination: buildPagination(query, count),
+    };
   }
 
   async processPending(limit = 20) {
@@ -115,7 +118,11 @@ export class MessagingService {
 
   async processOne(id: string | number) {
     const message = await this.outboxModel.findByPk(id as any);
-    if (!message) throw new NotFoundException({ code: 'OUTBOX_NOT_FOUND', message: 'No existe el mensaje solicitado.' });
+    if (!message)
+      throw new NotFoundException({
+        code: 'OUTBOX_NOT_FOUND',
+        message: 'No existe el mensaje solicitado.',
+      });
     return this.processBatch([message]);
   }
 
@@ -287,9 +294,7 @@ export class MessagingService {
     const responseHeaders = anyError?.response?.headers;
     const responseCode = anyError?.code ?? anyError?.response?.statusCode;
     const errorMessage =
-      responseBody?.errors?.[0]?.message ??
-      anyError?.message ??
-      'Unknown messaging error';
+      responseBody?.errors?.[0]?.message ?? anyError?.message ?? 'Unknown messaging error';
 
     return {
       message: String(errorMessage),

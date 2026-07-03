@@ -53,7 +53,7 @@ THERAPIST_EMAIL="${SMOKE_THERAPIST_EMAIL:-terapeuta.demo@corazonmigrante.test}"
 ADMIN_EMAIL="${SMOKE_ADMIN_EMAIL:-admin@corazonmigrante.test}"
 SUPERADMIN_EMAIL="${SMOKE_SUPERADMIN_EMAIL:-superadmin@corazonmigrante.test}"
 ACCOUNTANT_EMAIL="${SMOKE_ACCOUNTANT_EMAIL:-contador@corazonmigrante.test}"
-TEST_EMAIL="${SMOKE_TEST_EMAIL:-pablirca@gmail.com}"
+TEST_EMAIL="${SMOKE_TEST_EMAIL:-pabliarca@gmail.com}"
 export PATIENT_EMAIL THERAPIST_EMAIL ADMIN_EMAIL SUPERADMIN_EMAIL ACCOUNTANT_EMAIL TEST_EMAIL
 
 TMP_DIR="${TMPDIR:-/tmp}/cm-smoke-deep-$$"

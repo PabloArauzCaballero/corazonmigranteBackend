@@ -34,10 +34,15 @@
     "smoke:bash": "bash scripts/smoke.sh",
     "smoke:deep:bash": "bash scripts/smoke-deep.sh",
     "smoke:deep:bash:mutations": "bash scripts/smoke-deep.sh --mutations",
-    "smoke:deep:bash:external": "bash scripts/smoke-deep.sh --mutations --external"
+    "smoke:deep:bash:external": "bash scripts/smoke-deep.sh --mutations --external",
+    "typecheck": "tsc --noEmit",
+    "smoke:publications": "node scripts/smoke-content-advertising.mjs --publications",
+    "smoke:advertising": "node scripts/smoke-content-advertising.mjs --advertising",
+    "smoke:homepage": "node scripts/smoke-content-advertising.mjs --homepage",
+    "smoke:newspaper-internal": "node scripts/smoke-content-advertising.mjs --all"
   },
   "dependencies": {
-    "@google-cloud/storage": "^7.14.0",
+    "@google-cloud/storage": "^7.21.0",
     "@nestjs/common": "^11.1.27",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.27",
@@ -79,6 +84,7 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
     "jest": "^29.7.0",
+    "jest-util": "29.7.0",
     "prettier": "^3.4.2",
     "sequelize-cli": "^6.6.2",
     "source-map-support": "^0.5.21",
@@ -88,8 +94,7 @@
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.10",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.2",
-    "jest-util": "29.7.0"
+    "typescript": "^5.7.2"
   },
   "overrides": {
     "multer": "$multer"

@@ -47,7 +47,12 @@ export class MessageOutbox extends Model<MessageOutbox> {
   @Column({ type: DataType.INTEGER, allowNull: false, defaultValue: 6, field: 'max_intentos' })
   maxAttempts: number;
 
-  @Column({ type: DataType.DATE, allowNull: false, defaultValue: DataType.NOW, field: 'next_run_at' })
+  @Column({
+    type: DataType.DATE,
+    allowNull: false,
+    defaultValue: DataType.NOW,
+    field: 'next_run_at',
+  })
   scheduledAt: Date;
 
   @Column({ type: DataType.DATE, field: 'locked_at' })
@@ -59,7 +64,12 @@ export class MessageOutbox extends Model<MessageOutbox> {
   @Column({ type: DataType.TEXT, field: 'last_error' })
   lastError?: string;
 
-  @Column({ type: DataType.DATE, allowNull: false, defaultValue: DataType.NOW, field: 'created_at' })
+  @Column({
+    type: DataType.DATE,
+    allowNull: false,
+    defaultValue: DataType.NOW,
+    field: 'created_at',
+  })
   createdAt: Date;
 
   @Column({ type: DataType.DATE, field: 'sent_at' })

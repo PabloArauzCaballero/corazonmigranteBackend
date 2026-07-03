@@ -32,6 +32,11 @@ export class MessageSendLog extends Model<MessageSendLog> {
   @Column({ type: DataType.TEXT, allowNull: true, field: 'error' })
   error?: string;
 
-  @Column({ type: DataType.DATE, allowNull: false, defaultValue: DataType.NOW, field: 'created_at' })
+  @Column({
+    type: DataType.DATE,
+    allowNull: false,
+    defaultValue: DataType.NOW,
+    field: 'created_at',
+  })
   createdAt: Date;
 }
