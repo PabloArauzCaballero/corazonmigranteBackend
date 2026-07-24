@@ -73,7 +73,10 @@ export class ContentPublicationsService {
 
   async create(actorUserId: string, dto: CreateContentPublicationDto) {
     await this.relations.assertReferences(dto.authorId, dto.categoryId, dto.tagIds);
-    return this.publicationModel.sequelize!.transaction(async (transaction) => {
+    // El id se resuelve dentro de la transacción y el detalle se lee DESPUÉS del
+    // commit: getAdmin() usa una conexión sin la transacción, por lo que llamarlo
+    // dentro provocaba un 404 (la fila aún no era visible) y hacía rollback.
+    const createdId = await this.publicationModel.sequelize!.transaction(async (transaction) => {
       const publication = await this.publicationModel.create(
         {
           ...dto,
@@ -90,8 +93,9 @@ export class ContentPublicationsService {
       );
       await this.relations.replaceTags(publication.id, dto.tagIds ?? [], transaction);
       await this.audit.log(actorUserId, 'create', publication, undefined, transaction);
-      return this.getAdmin(publication.id);
+      return publication.id;
     });
+    return this.getAdmin(createdId);
   }
 
   async update(actorUserId: string, id: string, dto: UpdateContentPublicationDto) {
