@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
 import * as bcrypt from 'bcryptjs';
@@ -17,6 +22,11 @@ import {
   buildPagination,
   toLimitOffset,
 } from '@/common/pagination/pagination.dto';
+import {
+  dejariaSinSuperAdmin,
+  puedeActuarSobre,
+  puedeAsignarRol,
+} from './policies/admin-scope.policy';
 import { RolesPermissionsService } from '../roles-permissions/roles-permissions.service';
 import { AuditService } from '../audit/audit.service';
 import { UpdatePatientProfileDto, UpdateTherapistProfileDto } from './dto/update-profile.dto';
@@ -195,6 +205,7 @@ export class UsersService {
    */
   async createUser(actorUserId: string, dto: AdminCreateUserDto) {
     const roleCode = this.normalizeRole(dto.role);
+    await this.assertPuedeAsignarRol(actorUserId, roleCode);
     const existing = await this.userModel.findOne({ where: { email: dto.email } });
     if (existing)
       throw new BadRequestException({
@@ -241,6 +252,15 @@ export class UsersService {
     const user = await this.findUserOrFail(userId);
     const before = user.toJSON();
 
+    await this.assertPuedeActuarSobre(actorUserId, userId);
+    if (dto.role) {
+      const nuevoRol = this.normalizeRole(dto.role);
+      await this.assertPuedeAsignarRol(actorUserId, nuevoRol);
+      // Degradar al último super admin deja el panel sin quien lo administre,
+      // igual que suspenderlo.
+      if (nuevoRol !== 'SUPER_ADMIN') await this.assertNoEsElUltimoSuperAdmin(userId);
+    }
+
     if (dto.email && dto.email !== user.email) {
       const taken = await this.userModel.findOne({ where: { email: dto.email } });
       if (taken)
@@ -284,6 +304,9 @@ export class UsersService {
     const user = await this.findUserOrFail(userId);
     const before = user.status;
     const status = this.normalizeStatus(dto.status);
+
+    await this.assertPuedeActuarSobre(actorUserId, userId);
+    if (status !== 'ACTIVE') await this.assertNoEsElUltimoSuperAdmin(userId);
 
     await this.userModel.sequelize!.transaction(async (transaction) => {
       await user.update({ status } as any, { transaction });
@@ -429,6 +452,9 @@ export class UsersService {
     const user = await this.findUserOrFail(userId);
     const before = user.toJSON();
 
+    await this.assertPuedeActuarSobre(actorUserId, userId);
+    await this.assertNoEsElUltimoSuperAdmin(userId);
+
     await this.userModel.sequelize!.transaction(async (transaction) => {
       await user.update({ status: 'INACTIVE' } as any, { transaction });
       await this.revokeSessions(userId, transaction);
@@ -470,6 +496,53 @@ export class UsersService {
       { revokedAt: new Date() },
       { where: { userId, revokedAt: null }, transaction },
     );
+  }
+
+  /** La regla vive en `admin-scope.policy`; acá sólo se resuelve quién es quién. */
+  private async assertPuedeAsignarRol(actorUserId: string, roleCode: string) {
+    if (puedeAsignarRol(await this.esSuperAdmin(actorUserId), roleCode)) return;
+    throw new ForbiddenException({
+      code: 'ROLE_ASSIGNMENT_FORBIDDEN',
+      message: 'Solo un super admin puede otorgar el rol de super admin.',
+    });
+  }
+
+  private async assertPuedeActuarSobre(actorUserId: string, targetUserId: string) {
+    const objetivoEsSuperAdmin = await this.esSuperAdmin(targetUserId);
+    if (!objetivoEsSuperAdmin) return;
+    if (puedeActuarSobre(await this.esSuperAdmin(actorUserId), objetivoEsSuperAdmin)) return;
+    throw new ForbiddenException({
+      code: 'TARGET_ROLE_FORBIDDEN',
+      message: 'Solo un super admin puede administrar a otro super admin.',
+    });
+  }
+
+  private async assertNoEsElUltimoSuperAdmin(userId: string) {
+    if (!(await this.esSuperAdmin(userId))) return;
+
+    const otrosActivos = await this.userModel.count({
+      where: { status: 'ACTIVE', id: { [Op.ne]: userId } },
+      include: [
+        {
+          model: Role,
+          required: true,
+          where: { code: 'SUPER_ADMIN' },
+          through: { attributes: [] },
+        },
+      ],
+    });
+
+    if (dejariaSinSuperAdmin(true, otrosActivos))
+      throw new BadRequestException({
+        code: 'LAST_SUPER_ADMIN',
+        message:
+          'Es el único super admin activo: asigná otro antes de suspenderlo, cambiarle el rol o borrarlo.',
+      });
+  }
+
+  private async esSuperAdmin(userId: string) {
+    const { roles } = await this.rolesPermissions.getUserRolesAndPermissions(userId);
+    return roles.includes('SUPER_ADMIN');
   }
 
   private normalizeRole(role: string) {
