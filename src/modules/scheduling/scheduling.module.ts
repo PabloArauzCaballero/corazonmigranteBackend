@@ -3,11 +3,16 @@ import { SequelizeModule } from '@nestjs/sequelize';
 import {
   Appointment,
   TherapistBlockedTime,
+  TherapistProfile,
   TherapistSchedule,
   TherapyProduct,
 } from '@/database/models';
 import { AuditModule } from '../audit/audit.module';
-import { SchedulingController, BookingController } from './scheduling.controller';
+import {
+  SchedulingController,
+  AdminSchedulingController,
+  BookingController,
+} from './scheduling.controller';
 import { SchedulingService } from './scheduling.service';
 
 @Module({
@@ -15,12 +20,13 @@ import { SchedulingService } from './scheduling.service';
     SequelizeModule.forFeature([
       TherapistSchedule,
       TherapistBlockedTime,
+      TherapistProfile,
       Appointment,
       TherapyProduct,
     ]),
     AuditModule,
   ],
-  controllers: [SchedulingController, BookingController],
+  controllers: [SchedulingController, AdminSchedulingController, BookingController],
   providers: [SchedulingService],
   exports: [SchedulingService],
 })
